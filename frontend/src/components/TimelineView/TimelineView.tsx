@@ -133,9 +133,9 @@ function SegmentCard({
         </div>
 
         {assignedVoice ? (
-          <div className={styles.voiceBadge}>
+          <div className={styles.voiceBadge} data-testid="voice-badge">
             <span className={styles.voiceIcon}>🎤</span>
-            <span className={styles.voiceName}>{assignedVoice.name}</span>
+            <span className={styles.voiceName} data-testid="assigned-voice-name">{assignedVoice.name}</span>
             <button
               className={styles.removeVoiceButton}
               onClick={(e) => {

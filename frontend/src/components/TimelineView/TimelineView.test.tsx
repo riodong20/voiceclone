@@ -90,8 +90,10 @@ describe('TimelineView', () => {
       />
     );
 
-    // Second segment has a voice assigned
-    expect(screen.getByText('🎤 My Voice')).toBeInTheDocument();
+    // Second segment has a voice assigned - check by role and partial text
+    const voiceBadges = screen.getAllByText(/🎤/);
+    expect(voiceBadges.length).toBeGreaterThan(0);
+    expect(screen.getByText(/My Voice/)).toBeInTheDocument();
   });
 
   it('shows "+ Assign Voice" for segments without voice', () => {
