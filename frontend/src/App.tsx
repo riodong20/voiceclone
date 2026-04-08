@@ -23,6 +23,11 @@ function App() {
         setProjects(projectsData);
         setVoices(voicesData);
         if (projectsData.length > 0) {
+          // Load full project details with segments for the first project
+          const fullProject = await timelineApi.getProject(projectsData[0].id);
+          setProjects(prev =>
+            prev.map(p => p.id === fullProject.id ? fullProject : p)
+          );
           setCurrentProjectId(projectsData[0].id);
         }
       } catch (err) {
@@ -34,20 +39,6 @@ function App() {
     };
 
     loadData();
-  }, []);
-
-  // Get current project details
-  const loadProjectDetails = useCallback(async (projectId: string) => {
-    try {
-      const project = await timelineApi.getProject(projectId);
-      setProjects((prev) =>
-        prev.map((p) => (p.id === projectId ? project : p))
-      );
-      return project;
-    } catch (err) {
-      console.error('Failed to load project details:', err);
-      return null;
-    }
   }, []);
 
   // Handle project creation
@@ -72,15 +63,33 @@ function App() {
     );
   }, []);
 
-  // Refresh voices
-  const handleRefreshVoices = useCallback(async () => {
+  // Handle voices updated (from child components)
+  const handleVoicesUpdated = useCallback(async () => {
     try {
       const voicesData = await voiceApi.listCloned();
       setVoices(voicesData);
-    } catch (err) {
-      console.error('Failed to refresh voices:', err);
+    } catch (error) {
+      console.error('Failed to refresh voices:', error);
     }
   }, []);
+
+  // Load full project details when switching projects
+  useEffect(() => {
+    if (!currentProjectId) return;
+
+    const fetchFullProject = async () => {
+      try {
+        const fullProject = await timelineApi.getProject(currentProjectId);
+        setProjects(prev =>
+          prev.map(p => p.id === fullProject.id ? fullProject : p)
+        );
+      } catch (err) {
+        console.error('Failed to load project:', err);
+      }
+    };
+
+    fetchFullProject();
+  }, [currentProjectId]);
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
 
@@ -145,6 +154,7 @@ function App() {
             project={currentProject}
             voices={voices}
             onProjectUpdate={handleProjectUpdate}
+            onVoicesUpdated={handleVoicesUpdated}
           />
         ) : (
           <div className={styles.emptyState}>
