@@ -1,5 +1,6 @@
-from pydantic_settings import BaseSettings
 from pathlib import Path
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -28,7 +29,9 @@ class Settings(BaseSettings):
 
     # 日志配置
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-    log_format: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(funcName)s:%(lineno)d | %(message)s"
+    log_format: str = (
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(funcName)s:%(lineno)d | %(message)s"
+    )
     log_to_file: bool = True
     log_file_max_bytes: int = 10 * 1024 * 1024  # 10MB
     log_backup_count: int = 7  # 保留 7 个备份文件

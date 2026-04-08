@@ -1,17 +1,18 @@
 """
 测试配置和夹具 (fixtures) 文件
 """
+
 import asyncio
 import os
 import tempfile
 from pathlib import Path
-from typing import Generator, AsyncGenerator
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from typing import Generator
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
@@ -45,6 +46,7 @@ def setup_test_environment():
 
     # 清理
     import shutil
+
     shutil.rmtree(TEST_VOICES_DIR, ignore_errors=True)
     shutil.rmtree(TEST_UPLOADS_DIR, ignore_errors=True)
 
@@ -117,16 +119,18 @@ def mock_tts_service():
         service = Mock()
 
         # 模拟音频数据（WAV 头部）
-        mock_audio_data = b'RIFF\x00\x00\x00WAVEfmt\x00\x00\x00data\x00\x00\x00'
+        mock_audio_data = b"RIFF\x00\x00\x00WAVEfmt\x00\x00\x00data\x00\x00\x00"
 
         # 配置模拟方法
         service.synthesize_speech = AsyncMock(return_value=mock_audio_data)
         service.clone_voice = AsyncMock(return_value=mock_audio_data)
-        service.register_cloned_voice = AsyncMock(return_value={
-            "voice_id": "test_cloned_voice_123",
-            "voice_name": "Test Voice",
-            "role": "custom"
-        })
+        service.register_cloned_voice = AsyncMock(
+            return_value={
+                "voice_id": "test_cloned_voice_123",
+                "voice_name": "Test Voice",
+                "role": "custom",
+            }
+        )
 
         mock.return_value = service
         yield service
@@ -136,34 +140,32 @@ def mock_tts_service():
 def mock_openai_api():
     """模拟 OpenAI API 调用（如果将来添加）"""
     with patch("openai.Completion.create") as mock:
-        mock.return_value = {
-            "choices": [{"text": "Mocked response"}]
-        }
+        mock.return_value = {"choices": [{"text": "Mocked response"}]}
         yield mock
 
 
 @pytest.fixture
 def sample_audio_file():
     """创建测试音频文件"""
-    import wave
     import struct
+    import wave
 
     # 创建简单的 WAV 文件
     temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     temp_file.close()
 
     # 使用 Python 的 wave 模块创建 WAV 文件
-    with wave.open(temp_file.name, 'w') as wav_file:
-        wav_file.setparams((1, 2, 44100, 0, 'NONE', 'NONE'))
+    with wave.open(temp_file.name, "w") as wav_file:
+        wav_file.setparams((1, 2, 44100, 0, "NONE", "NONE"))
 
         # 写入一些样本数据
         samples = []
         for i in range(1000):
             sample = int(32767.0 * 0.5 * (1.0 + 0.5 * (i % 100) / 100.0))
-            packed_sample = struct.pack('<h', sample)
+            packed_sample = struct.pack("<h", sample)
             samples.append(packed_sample)
 
-        wav_file.writeframes(b''.join(samples))
+        wav_file.writeframes(b"".join(samples))
 
     yield temp_file.name
 
@@ -179,7 +181,7 @@ def test_voice_data():
         "name": "Test Voice",
         "voice_id": "test_voice_001",
         "role": "custom",
-        "text": "这是一个测试文本，用于语音合成测试。"
+        "text": "这是一个测试文本，用于语音合成测试。",
     }
 
 
@@ -196,8 +198,8 @@ def mock_http_client():
                 "task_id": "test_task_123",
                 "audio": {
                     "data": "ZmFrZV9hdWRpb19kYXRh"  # base64 编码的 "fake_audio_data"
-                }
-            }
+                },
+            },
         }
         client.post = AsyncMock(return_value=response)
         mock.return_value.__aenter__.return_value = client
@@ -215,5 +217,5 @@ def cleanup_test_files():
             for file in os.listdir(test_dir):
                 try:
                     os.remove(os.path.join(test_dir, file))
-                except:
+                except Exception:
                     pass

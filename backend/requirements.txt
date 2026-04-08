@@ -8,3 +8,8 @@ aiofiles==23.2.1
 python-dotenv==1.0.0
 httpx==0.26.0
 dashscope>=1.25.0
+
+# Linting & Code Quality
+black==23.12.1
+flake8==6.1.0
+isort==5.13.2

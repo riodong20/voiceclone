@@ -7,20 +7,18 @@
 - CosyVoice 系列 (cosyvoice-*): 使用 WebSocket API 进行语音合成，支持声音复刻
 """
 
-import json
-import uuid
-import os
 import asyncio
-import urllib.request
+import base64
+import json
+import logging
+import os
+import ssl
+import time
 import urllib.error
 import urllib.parse
-import base64
-from pathlib import Path
-from typing import Optional, Dict, Any, List
-import logging
-import ssl
-import http.cookiejar
-import time
+import urllib.request
+import uuid
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 
@@ -37,7 +35,7 @@ class QwenTTSService:
     TASK_QUERY_PATH = "/api/v1/services/audio/tts/query"
     # CosyVoice 系列使用声音复刻 API
     VOICE_ENROLLMENT_API_PATH = "/api/v1/services/audio/tts/customization"
-    
+
     # 模型系列判断前缀
     COSYVOICE_PREFIX = "cosyvoice"
     TTS_PREFIX = "qwen-tts"
@@ -49,16 +47,19 @@ class QwenTTSService:
             raise ValueError("QWEN_API_KEY is not configured")
         if not self.model:
             raise ValueError("QWEN_MODEL is not configured")
-        
+
         # 根据模型名称判断使用哪个系列
         self.is_cosyvoice = self.model.lower().startswith(self.COSYVOICE_PREFIX)
         self.is_tts = self.model.lower().startswith(self.TTS_PREFIX)
-        
+
         if not self.is_cosyvoice and not self.is_tts:
             logger.warning(f"Unknown model series: {self.model}. Using CosyVoice as default.")
             self.is_cosyvoice = True
-        
-        logger.info(f"Initialized Qwen TTS service with model: {self.model} (series: {'CosyVoice' if self.is_cosyvoice else 'TTS'})")
+
+        series = "CosyVoice" if self.is_cosyvoice else "TTS"
+        logger.info(
+            f"Initialized Qwen TTS service with model: {self.model} (series: {series})"
+        )
 
     def _get_headers(self) -> Dict[str, str]:
         """获取 API 请求头"""
@@ -68,7 +69,9 @@ class QwenTTSService:
             "X-Request-Id": str(uuid.uuid4()),
         }
 
-    def _wait_for_task_completion(self, task_id: str, max_retries: int = 30, delay: float = 1.0) -> Dict:
+    def _wait_for_task_completion(
+        self, task_id: str, max_retries: int = 30, delay: float = 1.0
+    ) -> Dict:
         """轮询等待任务完成"""
         url = f"{self.BASE_URL}{self.TASK_QUERY_PATH}?task_id={task_id}"
         headers = self._get_headers()
@@ -132,7 +135,13 @@ class QwenTTSService:
         return await loop.run_in_executor(
             None,
             self._synthesize_speech_sync,
-            text, voice_id, speed, volume, pitch, format, sample_rate
+            text,
+            voice_id,
+            speed,
+            volume,
+            pitch,
+            format,
+            sample_rate,
         )
 
     def _synthesize_speech_sync(
@@ -147,15 +156,19 @@ class QwenTTSService:
     ) -> bytes:
         """
         同步执行 TTS 合成 - 根据模型系列自动选择调用方式
-        
+
         为什么需要判断模型系列：
         - TTS 系列 (qwen-tts-*): 使用 HTTP API，通过 task_id 轮询获取结果
         - CosyVoice 系列 (cosyvoice-*): 使用 WebSocket API，支持实时流式合成
         """
         if self.is_cosyvoice:
-            return self._synthesize_speech_cosyvoice(text, voice_id, speed, volume, pitch, format, sample_rate)
+            return self._synthesize_speech_cosyvoice(
+                text, voice_id, speed, volume, pitch, format, sample_rate
+            )
         else:
-            return self._synthesize_speech_tts(text, voice_id, speed, volume, pitch, format, sample_rate)
+            return self._synthesize_speech_tts(
+                text, voice_id, speed, volume, pitch, format, sample_rate
+            )
 
     def _synthesize_speech_tts(
         self,
@@ -246,12 +259,12 @@ class QwenTTSService:
     ) -> bytes:
         """
         CosyVoice 系列模型的语音合成方法
-        
+
         为什么使用不同的 API：
         - CosyVoice 系列使用 WebSocket API 进行实时流式合成
         - 支持声音复刻音色（voice_id 为注册后的声音 ID）
         - 返回二进制音频数据而非 task_id
-        
+
         API 文档参考：docs/qwen 语音合成 api 说明.md - Cosyvoice 系列模型
         """
         # CosyVoice 使用不同的模型名称和参数结构
@@ -275,7 +288,10 @@ class QwenTTSService:
         url = f"{self.BASE_URL}{self.TTS_API_PATH}"
         headers = self._get_headers()
 
-        logger.info(f"Calling CosyVoice API with model: {self.model}, voice_id: {voice_id}, text: {text[:50]}...")
+        logger.info(
+            f"Calling CosyVoice API with model: {self.model}, "
+            f"voice_id: {voice_id}, text: {text[:50]}..."
+        )
 
         try:
             data = json.dumps(request_body).encode("utf-8")
@@ -284,28 +300,28 @@ class QwenTTSService:
 
             with urllib.request.urlopen(req, context=context) as response:
                 # CosyVoice 可能直接返回音频数据或 task_id
-                content_type = response.headers.get('Content-Type', '')
-                
-                if 'audio' in content_type:
+                content_type = response.headers.get("Content-Type", "")
+
+                if "audio" in content_type:
                     # 直接返回音频数据
                     return response.read()
                 else:
                     # 返回 JSON，可能包含 task_id
                     result = json.loads(response.read().decode("utf-8"))
-                    
+
                     # 检查错误
                     if "code" in result and result["code"] != "Success":
                         error_msg = f"CosyVoice API error: {result.get('message', 'Unknown error')}"
                         logger.error(error_msg)
                         raise Exception(error_msg)
-                    
+
                     # 如果有 task_id，轮询获取音频
                     if "output" in result and "task_id" in result["output"]:
                         task_id = result["output"]["task_id"]
                         logger.info(f"CosyVoice task submitted, task_id: {task_id}")
-                        
+
                         completed_result = self._wait_for_task_completion(task_id)
-                        
+
                         if "output" in completed_result and "audio" in completed_result["output"]:
                             return base64.b64decode(completed_result["output"]["audio"]["data"])
                         else:
@@ -349,9 +365,7 @@ class QwenTTSService:
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None,
-            self._clone_voice_sync,
-            voice_id, text, speed, volume, pitch, format, sample_rate
+            None, self._clone_voice_sync, voice_id, text, speed, volume, pitch, format, sample_rate
         )
 
     def _clone_voice_sync(
@@ -366,13 +380,15 @@ class QwenTTSService:
     ) -> bytes:
         """
         同步执行声音克隆 - 根据模型系列自动选择调用方式
-        
+
         为什么需要判断模型系列：
         - TTS 系列：使用 qwen3-tts-vc-2026-01-22 模型进行声音克隆
         - CosyVoice 系列：使用 cosyvoice 模型和注册的 voice_id 进行合成
         """
         if self.is_cosyvoice:
-            return self._clone_voice_cosyvoice(voice_id, text, speed, volume, pitch, format, sample_rate)
+            return self._clone_voice_cosyvoice(
+                voice_id, text, speed, volume, pitch, format, sample_rate
+            )
         else:
             return self._clone_voice_tts(voice_id, text, speed, volume, pitch, format, sample_rate)
 
@@ -387,7 +403,6 @@ class QwenTTSService:
         sample_rate: int = 16000,
     ) -> bytes:
         """TTS 系列模型的声音克隆方法"""
-        import time
 
         # 使用 qwen3-tts-vc-2026-01-22 模型和已注册的 voice_id
         request_body = {
@@ -464,12 +479,12 @@ class QwenTTSService:
     ) -> bytes:
         """
         CosyVoice 系列模型的声音克隆方法
-        
+
         使用 dashscope SDK 的 SpeechSynthesizer 进行语音合成：
         1. 配置全局 dashscope.api_key 和 base_http_api_url
         2. 创建 SpeechSynthesizer 实例，传入 model 和 voice
         3. 调用 call() 方法返回二进制音频数据
-        
+
         为什么使用 SDK：
         - 示例代码使用 SpeechSynthesizer.call() 直接返回音频
         - 避免 HTTP API 的 url error 问题
@@ -477,30 +492,28 @@ class QwenTTSService:
         """
         import dashscope
         from dashscope.audio.tts_v2 import SpeechSynthesizer
-        
+
         # 配置全局 API Key 和 URL（根据示例代码）
         dashscope.api_key = self.api_key
-        dashscope.base_http_api_url = 'https://dashscope.aliyuncs.com/api/v1'
-        
+        dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
+
         logger.info(f"Synthesizing speech with CosyVoice: model={self.model}, voice={voice_id}")
-        
+
         try:
             # 创建 SpeechSynthesizer 实例
             # 根据示例代码，参数包括：model, voice, speech_rate 等
             # 注意：pitch 和 volume 参数可能不被支持
-            synthesizer = SpeechSynthesizer(
-                model=self.model,
-                voice=voice_id,
-                speech_rate=speed
-            )
-            
+            synthesizer = SpeechSynthesizer(model=self.model, voice=voice_id, speech_rate=speed)
+
             # 调用 call() 方法返回二进制音频数据
             audio_data = synthesizer.call(text)
-            
-            logger.info(f"Speech synthesis successful. Request ID: {synthesizer.get_last_request_id()}")
-            
+
+            logger.info(
+                f"Speech synthesis successful. Request ID: {synthesizer.get_last_request_id()}"
+            )
+
             return audio_data
-            
+
         except Exception as e:
             error_msg = f"SpeechSynthesizer error: {e}"
             logger.error(error_msg)
@@ -523,9 +536,7 @@ class QwenTTSService:
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None,
-            self._register_cloned_voice_sync,
-            reference_audio_path, voice_name
+            None, self._register_cloned_voice_sync, reference_audio_path, voice_name
         )
 
     def _register_cloned_voice_sync(
@@ -535,11 +546,11 @@ class QwenTTSService:
     ) -> Dict[str, Any]:
         """
         同步执行声音注册 - 根据模型系列自动选择调用方式
-        
+
         为什么需要判断模型系列：
         - TTS 系列：使用 qwen-voice-enrollment 模型进行声音注册
         - CosyVoice 系列：使用 VoiceEnrollmentService 进行声音复刻
-        
+
         注意：
         - Qwen API 支持的音频格式：MP3, WAV, OGG
         - WebM 格式会在上传时自动转换为 MP3
@@ -556,7 +567,6 @@ class QwenTTSService:
         voice_name: str = "cloned_voice",
     ) -> Dict[str, Any]:
         """TTS 系列模型的声音注册方法"""
-        import time
         from datetime import datetime
 
         if not os.path.exists(reference_audio_path):
@@ -570,10 +580,12 @@ class QwenTTSService:
             ".ogg": "audio/ogg",
         }
         mime_type = mime_type_map.get(file_ext, "audio/mpeg")
-        
+
         # 如果是不支持的格式，记录错误
         if file_ext not in mime_type_map:
-            logger.error(f"Unsupported audio format for Qwen API: {file_ext}. File: {reference_audio_path}")
+            logger.error(
+                f"Unsupported audio format for Qwen API: {file_ext}. File: {reference_audio_path}"
+            )
             raise ValueError(f"Unsupported audio format: {file_ext}. Expected MP3, WAV, or OGG.")
 
         # 读取参考音频并转换为 Base64（data URI 格式）
@@ -590,7 +602,7 @@ class QwenTTSService:
         # 格式：clone + HHMMSS（6 位时间秒数，共 11 位）
         timestamp = datetime.now().strftime("%H%M%S")
         preferred_name = f"clone{timestamp}"
-        
+
         request_body = {
             "model": "qwen-voice-enrollment",
             "input": {
@@ -604,7 +616,10 @@ class QwenTTSService:
         url = f"{self.BASE_URL}{self.VOICE_ENROLLMENT_API_PATH}"
         headers = self._get_headers()
 
-        logger.info(f"Registering cloned voice (TTS series): {voice_name} (preferred_name: {preferred_name})")
+        logger.info(
+            f"Registering cloned voice (TTS series): {voice_name} "
+            f"(preferred_name: {preferred_name})"
+        )
         logger.info(f"Request URL: {url}")
         logger.info(f"Full request body: {json.dumps(request_body, ensure_ascii=False)}")
 
@@ -620,7 +635,9 @@ class QwenTTSService:
 
             # 检查 API 是否直接返回错误
             if "code" in result and result["code"] != "Success":
-                error_msg = f"Voice Registration API error: {result.get('message', 'Unknown error')}"
+                error_msg = (
+                    f"Voice Registration API error: {result.get('message', 'Unknown error')}"
+                )
                 logger.error(error_msg)
                 raise Exception(error_msg)
 
@@ -629,15 +646,19 @@ class QwenTTSService:
             if "output" in result and "voice" in result["output"]:
                 voice_data = result["output"]["voice"]
                 logger.info(f"Voice data from API: {voice_data}")
-                
+
                 # voice_data 可能包含 voice_id, name 等信息
                 # 根据文档，voice 对象包含必要的声音信息
                 if isinstance(voice_data, dict):
-                    voice_id = voice_data.get("voice_id") or voice_data.get("id") or voice_data.get("voice")
+                    voice_id = (
+                        voice_data.get("voice_id")
+                        or voice_data.get("id")
+                        or voice_data.get("voice")
+                    )
                     if not voice_id:
                         # 如果 voice 对象没有明确的 ID 字段，使用整个 voice 字符串/对象
                         voice_id = str(voice_data)
-                    
+
                     return {
                         "voice_id": voice_id,
                         "voice_name": voice_name,
@@ -652,14 +673,16 @@ class QwenTTSService:
                         "role": "custom",
                         "raw_voice_data": voice_data,
                     }
-            
+
             # 如果没有返回 voice 对象，检查是否有 task_id（备用方案）
             if "output" in result and "task_id" in result["output"]:
                 task_id = result["output"]["task_id"]
                 logger.info(f"Task ID: {task_id}, waiting for completion...")
-                
+
                 # 等待任务完成（音色注册需要更长时间）
-                completed_result = self._wait_for_task_completion(task_id, max_retries=60, delay=2.0)
+                completed_result = self._wait_for_task_completion(
+                    task_id, max_retries=60, delay=2.0
+                )
                 logger.info(f"Task completed. Result: {completed_result}")
 
                 # 获取声音 ID
@@ -667,27 +690,29 @@ class QwenTTSService:
                     output_data = completed_result["output"]
                     voice_id = output_data.get("voice_id")
                     if not voice_id:
-                        logger.warning(f"Voice registration completed but no voice_id returned: {output_data}")
+                        logger.warning(
+                            f"Voice registration completed but no voice_id returned: {output_data}"
+                        )
                         voice_id = f"voice_{task_id}"
-                    
+
                     logger.info(f"Final voice_id: {voice_id}")
-                    
+
                     return {
                         "voice_id": voice_id,
                         "voice_name": voice_name,
                         "role": output_data.get("gender", "custom"),
                     }
-            
+
             # 最坏情况：无法解析响应
             logger.warning(f"Unexpected response: {result}")
             return {
-                "voice_id": f"voice_unknown",
+                "voice_id": "voice_unknown",
                 "voice_name": voice_name,
                 "role": "custom",
             }
 
         except urllib.error.HTTPError as e:
-            error_body = e.read().decode('utf-8')
+            error_body = e.read().decode("utf-8")
             error_msg = f"Voice Registration API HTTP error: {e.code} - {error_body}"
             logger.error(error_msg)
             raise Exception(error_msg)
@@ -717,12 +742,11 @@ class QwenTTSService:
         - 可以通过 external_audio_url 参数直接传入外部音频 URL（如七牛云、AWS S3 等）
         - 如果没有提供 external_audio_url，则需要配置 PUBLIC_BASE_URL 环境变量
         """
-        import time
         from datetime import datetime
 
         # 检查是否是外部 URL
-        is_external_url = reference_audio_path.startswith(('http://', 'https://'))
-        
+        is_external_url = reference_audio_path.startswith(("http://", "https://"))
+
         if not is_external_url:
             # 本地文件路径检查
             if not os.path.exists(reference_audio_path):
@@ -732,21 +756,30 @@ class QwenTTSService:
             file_ext = os.path.splitext(reference_audio_path)[1].lower()
             supported_formats = [".mp3", ".wav", ".ogg"]
             if file_ext not in supported_formats:
-                logger.error(f"Unsupported audio format for CosyVoice API: {file_ext}. File: {reference_audio_path}")
-                raise ValueError(f"Unsupported audio format: {file_ext}. Expected MP3, WAV, or OGG.")
+                logger.error(
+                    f"Unsupported audio format for CosyVoice API: {file_ext}. "
+                    f"File: {reference_audio_path}"
+                )
+                raise ValueError(
+                    f"Unsupported audio format: {file_ext}. Expected MP3, WAV, or OGG."
+                )
 
         # 构建公网可访问的音频 URL
         # 优先使用外部传入的 audio_url，其次使用 PUBLIC_BASE_URL
         audio_url = None
-        
+
         # 如果 reference_audio_path 已经是 URL（以 http 开头），直接使用
         if is_external_url:
             audio_url = reference_audio_path
             logger.info(f"Using external audio URL: {audio_url}")
-            
+
             # 从 URL 推断文件格式
-            url_without_params = reference_audio_path.split('?')[0]
-            file_ext = '.' + url_without_params.split('.')[-1].lower() if '.' in url_without_params else '.mp3'
+            url_without_params = reference_audio_path.split("?")[0]
+            file_ext = (
+                "." + url_without_params.split(".")[-1].lower()
+                if "." in url_without_params
+                else ".mp3"
+            )
             supported_formats = [".mp3", ".wav", ".ogg", ".webm"]
             if file_ext not in supported_formats:
                 logger.warning(f"URL may not be a supported audio format: {file_ext}")
@@ -754,16 +787,20 @@ class QwenTTSService:
             # 从文件路径中提取 voice_id（文件名）
             voice_id_from_path = os.path.splitext(os.path.basename(reference_audio_path))[0]
             # 尝试从 PUBLIC_BASE_URL 构建
-            public_base_url = getattr(settings, 'public_base_url', None) or os.environ.get("PUBLIC_BASE_URL")
+            public_base_url = getattr(settings, "public_base_url", None) or os.environ.get(
+                "PUBLIC_BASE_URL"
+            )
             if public_base_url:
                 audio_url = f"{public_base_url.rstrip('/')}/api/clone/audio/{voice_id_from_path}"
                 logger.info(f"Using audio URL from PUBLIC_BASE_URL: {audio_url}")
             else:
                 raise ValueError(
-                    "PUBLIC_BASE_URL not configured. CosyVoice requires a publicly accessible URL for audio files. "
+                    "PUBLIC_BASE_URL not configured. "
+                    "CosyVoice requires a publicly accessible URL for audio files. "
                     "Please either: "
-                    "1. Set PUBLIC_BASE_URL environment variable (e.g., https://your-domain.com), or "
-                    "2. Provide an external audio URL directly (e.g., from cloud storage like Qiniu, AWS S3)"
+                    "1. Set PUBLIC_BASE_URL environment variable, or "
+                    "2. Provide an external audio URL directly "
+                    "(e.g., from cloud storage like Qiniu, AWS S3)"
                 )
 
         # CosyVoice 的 prefix 要求：仅允许数字和小写字母，少于 10 个字符
@@ -771,21 +808,26 @@ class QwenTTSService:
         voice_prefix = f"clone{timestamp}"[:9]  # 确保少于 10 个字符
 
         # 使用 dashscope SDK 的 VoiceEnrollmentService
-        logger.info(f"Registering cloned voice (CosyVoice series): {voice_name} (prefix: {voice_prefix})")
+        logger.info(
+            f"Registering cloned voice (CosyVoice series): {voice_name} (prefix: {voice_prefix})"
+        )
         logger.info(f"Audio URL: {audio_url}")
         logger.info(f"Target model: {self.model}")
-        
+
         try:
             import dashscope
-            from dashscope.audio.tts_v2 import VoiceEnrollmentService, VoiceEnrollmentException
-            
+            from dashscope.audio.tts_v2 import (
+                VoiceEnrollmentException,
+                VoiceEnrollmentService,
+            )
+
             # 配置全局 API Key（根据示例代码）
             dashscope.api_key = self.api_key
-            
+
             # 创建 VoiceEnrollmentService 实例
             # 注意：根据示例代码，VoiceEnrollmentService 不需要传入 api_key 参数
             service = VoiceEnrollmentService()
-            
+
             # 调用 create_voice 创建音色
             # target_model: 克隆音色对应的语音合成模型版本
             # prefix: 音色自定义前缀，仅允许数字和小写字母，小于十个字符
@@ -793,21 +835,21 @@ class QwenTTSService:
             voice_id = service.create_voice(
                 target_model=self.model,  # 使用配置的模型名称
                 prefix=voice_prefix,
-                url=audio_url
+                url=audio_url,
             )
-            
+
             logger.info(f"Voice created successfully. voice_id: {voice_id}")
             logger.info(f"Request ID: {service.get_last_request_id()}")
-            
+
             # 轮询等待声音状态变为 OK
             final_voice_id = self._wait_for_voice_ready_cosyvoice(service, voice_id)
-            
+
             return {
                 "voice_id": final_voice_id,
                 "voice_name": voice_name,
                 "role": "custom",
             }
-            
+
         except VoiceEnrollmentException as e:
             error_msg = f"VoiceEnrollmentService error: {e}"
             logger.error(error_msg)
@@ -816,7 +858,9 @@ class QwenTTSService:
             logger.error(f"CosyVoice Registration failed: {str(e)}")
             raise
 
-    def _wait_for_voice_ready_cosyvoice(self, service, voice_id: str, max_attempts: int = 30, poll_interval: float = 10.0) -> str:
+    def _wait_for_voice_ready_cosyvoice(
+        self, service, voice_id: str, max_attempts: int = 30, poll_interval: float = 10.0
+    ) -> str:
         """
         轮询等待声音注册状态变为 OK（使用 dashscope SDK 的 query_voice 方法）
 
@@ -831,25 +875,34 @@ class QwenTTSService:
         Returns:
             准备好的 voice_id
         """
-        logger.info(f"Waiting for voice ready (CosyVoice): {voice_id}, max_attempts: {max_attempts}, interval: {poll_interval}s")
+        logger.info(
+            f"Waiting for voice ready (CosyVoice): {voice_id}, "
+            f"max_attempts: {max_attempts}, interval: {poll_interval}s"
+        )
 
         for attempt in range(max_attempts):
             try:
                 # 使用 SDK 的 query_voice 方法查询状态
                 voice_info = service.query_voice(voice_id=voice_id)
                 status = voice_info.get("status")
-                
-                logger.info(f"Voice query attempt {attempt + 1}/{max_attempts}: status='{status}', voice_info={voice_info}")
+
+                logger.info(
+                    f"Voice query attempt {attempt + 1}/{max_attempts}: "
+                    f"status='{status}', voice_info={voice_info}"
+                )
 
                 if status == "OK":
                     logger.info(f"Voice is ready! voice_id: {voice_id}")
                     return voice_id
                 elif status == "UNDEPLOYED":
-                    error_msg = f"Voice processing failed with status: {status}. Please check audio quality or contact support."
+                    error_msg = (
+                        f"Voice processing failed with status: {status}. "
+                        f"Please check audio quality or contact support."
+                    )
                     logger.error(error_msg)
                     raise RuntimeError(error_msg)
                 # 对于 "DEPLOYING" 等中间状态，继续等待
-                
+
                 time.sleep(poll_interval)
 
             except Exception as e:
@@ -858,11 +911,16 @@ class QwenTTSService:
                 continue
 
         # 超时
-        error_msg = f"Voice registration timeout: voice_id {voice_id} is not ready after {max_attempts} attempts"
+        error_msg = (
+            f"Voice registration timeout: voice_id {voice_id} "
+            f"is not ready after {max_attempts} attempts"
+        )
         logger.error(error_msg)
         raise RuntimeError(error_msg)
 
-    def _wait_for_voice_ready(self, voice_id: str, max_attempts: int = 30, poll_interval: float = 10.0) -> str:
+    def _wait_for_voice_ready(
+        self, voice_id: str, max_attempts: int = 30, poll_interval: float = 10.0
+    ) -> str:
         """
         轮询等待声音注册状态变为 OK
 
@@ -876,7 +934,6 @@ class QwenTTSService:
         Returns:
             准备好的 voice_id
         """
-        from datetime import datetime
 
         # 构建查询请求体
         query_request_body = {
@@ -890,7 +947,10 @@ class QwenTTSService:
         url = f"{self.BASE_URL}{self.VOICE_ENROLLMENT_API_PATH}"
         headers = self._get_headers()
 
-        logger.info(f"Waiting for voice ready: {voice_id}, max_attempts: {max_attempts}, interval: {poll_interval}s")
+        logger.info(
+            f"Waiting for voice ready: {voice_id}, "
+            f"max_attempts: {max_attempts}, interval: {poll_interval}s"
+        )
 
         for attempt in range(max_attempts):
             try:
@@ -905,7 +965,9 @@ class QwenTTSService:
 
                 # 检查 API 错误
                 if "code" in result and result["code"] != "Success":
-                    logger.warning(f"Voice query API error: {result.get('message', 'Unknown error')}")
+                    logger.warning(
+                        f"Voice query API error: {result.get('message', 'Unknown error')}"
+                    )
                     time.sleep(poll_interval)
                     continue
 
@@ -920,7 +982,10 @@ class QwenTTSService:
                         logger.info(f"Voice is ready! voice_id: {voice_id}")
                         return voice_id
                     elif status == "UNDEPLOYED":
-                        error_msg = f"Voice processing failed with status: {status}. Please check audio quality or contact support."
+                        error_msg = (
+                            f"Voice processing failed with status: {status}. "
+                            f"Please check audio quality or contact support."
+                        )
                         logger.error(error_msg)
                         raise RuntimeError(error_msg)
                     # 对于 "DEPLOYING" 等中间状态，继续等待
@@ -928,7 +993,9 @@ class QwenTTSService:
                 time.sleep(poll_interval)
 
             except urllib.error.HTTPError as e:
-                logger.warning(f"HTTP error during voice query: {e.code} - {e.read().decode('utf-8')}")
+                logger.warning(
+                    f"HTTP error during voice query: {e.code} - {e.read().decode('utf-8')}"
+                )
                 time.sleep(poll_interval)
                 continue
             except Exception as e:
@@ -937,7 +1004,10 @@ class QwenTTSService:
                 continue
 
         # 超时
-        error_msg = f"Voice registration timeout: voice_id {voice_id} is not ready after {max_attempts} attempts"
+        error_msg = (
+            f"Voice registration timeout: voice_id {voice_id} "
+            f"is not ready after {max_attempts} attempts"
+        )
         logger.error(error_msg)
         raise RuntimeError(error_msg)
 
@@ -949,10 +1019,7 @@ class QwenTTSService:
             包含已克隆声音列表的字典
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            self._list_cloned_voices_sync
-        )
+        return await loop.run_in_executor(None, self._list_cloned_voices_sync)
 
     def _list_cloned_voices_sync(self) -> List[Dict[str, Any]]:
         """
@@ -971,7 +1038,7 @@ class QwenTTSService:
         url = f"{self.BASE_URL}{self.VOICE_ENROLLMENT_API_PATH}"
         headers = self._get_headers()
 
-        logger.info(f"Listing cloned voices from Qwen API")
+        logger.info("Listing cloned voices from Qwen API")
 
         try:
             data = json.dumps(request_body).encode("utf-8")
@@ -1008,7 +1075,7 @@ class QwenTTSService:
             return []
 
         except urllib.error.HTTPError as e:
-            error_body = e.read().decode('utf-8')
+            error_body = e.read().decode("utf-8")
             error_msg = f"List voices API HTTP error: {e.code} - {error_body}"
             logger.error(error_msg)
             raise Exception(error_msg)

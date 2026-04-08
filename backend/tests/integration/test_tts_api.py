@@ -1,9 +1,8 @@
 """
 TTS API 集成测试
 """
+
 import pytest
-import json
-from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 
 
@@ -21,7 +20,7 @@ class TestTTSAPI:
             "volume": 85,
             "pitch": 1,
             "emotion": "happy",
-            "voice_id": "xiaoyun"
+            "voice_id": "xiaoyun",
         }
 
         response = client.post("/api/tts/synthesize", json=request_data)
@@ -45,16 +44,14 @@ class TestTTSAPI:
             volume=85,
             pitch=1,
             format="wav",
-            sample_rate=16000
+            sample_rate=16000,
         )
 
     def test_synthesize_speech_with_defaults(self, client: TestClient, mock_tts_service):
         """测试使用默认参数的语音合成"""
         mock_tts_service.synthesize_speech.return_value = b"audio_data"
 
-        request_data = {
-            "text": "Test with defaults"
-        }
+        request_data = {"text": "Test with defaults"}
 
         response = client.post("/api/tts/synthesize", json=request_data)
         assert response.status_code == 200
@@ -74,7 +71,7 @@ class TestTTSAPI:
             volume=80,
             pitch=0,
             format="wav",
-            sample_rate=16000
+            sample_rate=16000,
         )
 
     def test_synthesize_speech_with_custom_voice(self, client: TestClient, mock_tts_service):
@@ -83,7 +80,7 @@ class TestTTSAPI:
 
         request_data = {
             "text": "Test with custom voice",
-            "voice_id": "xiaogang"  # 男性声音
+            "voice_id": "xiaogang",  # 男性声音
         }
 
         response = client.post("/api/tts/synthesize", json=request_data)
@@ -99,15 +96,12 @@ class TestTTSAPI:
             volume=80,
             pitch=0,
             format="wav",
-            sample_rate=16000
+            sample_rate=16000,
         )
 
     def test_synthesize_speech_empty_text(self, client: TestClient):
         """测试空文本的语音合成"""
-        request_data = {
-            "text": "",
-            "voice_id": "xiaoyun"
-        }
+        request_data = {"text": "", "voice_id": "xiaoyun"}
 
         response = client.post("/api/tts/synthesize", json=request_data)
         # 可能是 422（验证错误）或 400（业务逻辑错误）
@@ -118,10 +112,7 @@ class TestTTSAPI:
         mock_tts_service.synthesize_speech.return_value = b"audio_data"
 
         long_text = "这是一个很长的文本，" * 50  # 创建长文本
-        request_data = {
-            "text": long_text,
-            "voice_id": "xiaoyun"
-        }
+        request_data = {"text": long_text, "voice_id": "xiaoyun"}
 
         response = client.post("/api/tts/synthesize", json=request_data)
         assert response.status_code == 200
@@ -136,10 +127,7 @@ class TestTTSAPI:
         # 模拟服务抛出异常
         mock_tts_service.synthesize_speech.side_effect = Exception("TTS service error")
 
-        request_data = {
-            "text": "Test error handling",
-            "voice_id": "xiaoyun"
-        }
+        request_data = {"text": "Test error handling", "voice_id": "xiaoyun"}
 
         response = client.post("/api/tts/synthesize", json=request_data)
         assert response.status_code == 500
@@ -153,26 +141,14 @@ class TestTTSAPI:
 
         request_data = {
             "segments": [
-                {
-                    "text": "First segment text.",
-                    "start_time": 0.0,
-                    "end_time": 2.0
-                },
-                {
-                    "text": "Second segment text.",
-                    "start_time": 2.0,
-                    "end_time": 4.0
-                },
-                {
-                    "text": "Third segment text.",
-                    "start_time": 4.0,
-                    "end_time": 6.0
-                }
+                {"text": "First segment text.", "start_time": 0.0, "end_time": 2.0},
+                {"text": "Second segment text.", "start_time": 2.0, "end_time": 4.0},
+                {"text": "Third segment text.", "start_time": 4.0, "end_time": 6.0},
             ],
             "speed": 1.1,
             "volume": 75,
             "pitch": -1,
-            "emotion": "calm"
+            "emotion": "calm",
         }
 
         response = client.post("/api/tts/batch", json=request_data)
@@ -208,11 +184,7 @@ class TestTTSAPI:
 
     def test_batch_synthesize_empty_segments(self, client: TestClient):
         """测试空段落的批量合成"""
-        request_data = {
-            "segments": [],
-            "speed": 1.0,
-            "volume": 80
-        }
+        request_data = {"segments": [], "speed": 1.0, "volume": 80}
 
         response = client.post("/api/tts/batch", json=request_data)
         assert response.status_code == 200
@@ -224,15 +196,7 @@ class TestTTSAPI:
         """测试使用默认参数的批量合成"""
         mock_tts_service.synthesize_speech.return_value = b"audio_data"
 
-        request_data = {
-            "segments": [
-                {
-                    "text": "Test segment",
-                    "start_time": 0.0,
-                    "end_time": 1.0
-                }
-            ]
-        }
+        request_data = {"segments": [{"text": "Test segment", "start_time": 0.0, "end_time": 1.0}]}
 
         response = client.post("/api/tts/batch", json=request_data)
         assert response.status_code == 200
@@ -245,7 +209,7 @@ class TestTTSAPI:
             volume=80,
             pitch=0,
             format="wav",
-            sample_rate=16000
+            sample_rate=16000,
         )
 
     def test_batch_synthesize_tts_service_error(self, client: TestClient, mock_tts_service):
@@ -254,14 +218,14 @@ class TestTTSAPI:
         mock_tts_service.synthesize_speech.side_effect = [
             b"audio_data_1",
             Exception("TTS error on second segment"),
-            b"audio_data_3"  # 不会执行到这里
+            b"audio_data_3",  # 不会执行到这里
         ]
 
         request_data = {
             "segments": [
                 {"text": "Segment 1", "start_time": 0.0, "end_time": 1.0},
                 {"text": "Segment 2", "start_time": 1.0, "end_time": 2.0},
-                {"text": "Segment 3", "start_time": 2.0, "end_time": 3.0}
+                {"text": "Segment 3", "start_time": 2.0, "end_time": 3.0},
             ]
         }
 
@@ -273,7 +237,6 @@ class TestTTSAPI:
 
     def test_get_tts_audio_success(self, client: TestClient):
         """测试获取 TTS 音频文件成功"""
-        import tempfile
         import os
 
         # 创建测试音频文件
@@ -342,36 +305,38 @@ class TestTTSAPI:
         assert xiaogang["name"] == "小刚"
         assert xiaogang["gender"] == "male"
 
-    @pytest.mark.parametrize("invalid_data", [
-        {},  # 空对象
-        {"text": ""},  # 空文本
-        {"text": "a" * 10001},  # 超长文本
-        {"text": "test", "speed": 0},  # 无效语速
-        {"text": "test", "speed": 3.0},  # 超快语速
-        {"text": "test", "volume": -10},  # 无效音量
-        {"text": "test", "volume": 110},  # 超音量
-        {"text": "test", "pitch": -13},  # 无效音调
-        {"text": "test", "pitch": 13},  # 超音调
-    ])
+    @pytest.mark.parametrize(
+        "invalid_data",
+        [
+            {},  # 空对象
+            {"text": ""},  # 空文本
+            {"text": "a" * 10001},  # 超长文本
+            {"text": "test", "speed": 0},  # 无效语速
+            {"text": "test", "speed": 3.0},  # 超快语速
+            {"text": "test", "volume": -10},  # 无效音量
+            {"text": "test", "volume": 110},  # 超音量
+            {"text": "test", "pitch": -13},  # 无效音调
+            {"text": "test", "pitch": 13},  # 超音调
+        ],
+    )
     def test_synthesize_speech_invalid_parameters(self, client: TestClient, invalid_data):
         """测试使用无效参数的语音合成"""
         response = client.post("/api/tts/synthesize", json=invalid_data)
         # 可能是 422（验证错误）或 400（业务逻辑错误）
         assert response.status_code in [400, 422]
 
-    @pytest.mark.parametrize("invalid_segment", [
-        {"text": "", "start_time": 0.0, "end_time": 1.0},  # 空文本
-        {"text": "test", "start_time": -1.0, "end_time": 1.0},  # 负开始时间
-        {"text": "test", "start_time": 2.0, "end_time": 1.0},  # 结束时间早于开始时间
-        {"text": "test", "start_time": 0.0, "end_time": 0.0},  # 零时长
-    ])
+    @pytest.mark.parametrize(
+        "invalid_segment",
+        [
+            {"text": "", "start_time": 0.0, "end_time": 1.0},  # 空文本
+            {"text": "test", "start_time": -1.0, "end_time": 1.0},  # 负开始时间
+            {"text": "test", "start_time": 2.0, "end_time": 1.0},  # 结束时间早于开始时间
+            {"text": "test", "start_time": 0.0, "end_time": 0.0},  # 零时长
+        ],
+    )
     def test_batch_synthesize_invalid_segments(self, client: TestClient, invalid_segment):
         """测试使用无效段落的批量合成"""
-        request_data = {
-            "segments": [invalid_segment],
-            "speed": 1.0,
-            "volume": 80
-        }
+        request_data = {"segments": [invalid_segment], "speed": 1.0, "volume": 80}
 
         response = client.post("/api/tts/batch", json=request_data)
         # 可能是 422（验证错误）或 400（业务逻辑错误）
@@ -380,7 +345,6 @@ class TestTTSAPI:
     def test_concurrent_synthesize_requests(self, client: TestClient, mock_tts_service):
         """测试并发语音合成请求"""
         import threading
-        import time
 
         mock_tts_service.synthesize_speech.return_value = b"audio_data"
 
@@ -389,10 +353,7 @@ class TestTTSAPI:
 
         def make_request(request_num):
             try:
-                request_data = {
-                    "text": f"Concurrent request {request_num}",
-                    "voice_id": "xiaoyun"
-                }
+                request_data = {"text": f"Concurrent request {request_num}", "voice_id": "xiaoyun"}
                 response = client.post("/api/tts/synthesize", json=request_data)
                 results.append((request_num, response.status_code))
             except Exception as e:

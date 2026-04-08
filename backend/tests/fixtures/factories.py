@@ -1,17 +1,18 @@
 """
 工厂模式创建测试对象
 """
+
 import uuid
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 import factory
 from factory.alchemy import SQLAlchemyModelFactory
 
 from app.core.database import SessionLocal
-from app.models.voice_profile import VoiceProfile
-from app.models.tts_config import TTSConfig
 from app.models.timeline import TimelineProject, TimelineSegment
+from app.models.tts_config import TTSConfig
+from app.models.voice_profile import VoiceProfile
 
 
 class VoiceProfileFactory(SQLAlchemyModelFactory):
@@ -24,9 +25,7 @@ class VoiceProfileFactory(SQLAlchemyModelFactory):
 
     id = factory.LazyFunction(lambda: str(uuid.uuid4()))
     name = factory.Faker("name")
-    audio_path = factory.LazyFunction(
-        lambda: f"/tmp/test_audio_{uuid.uuid4().hex}.wav"
-    )
+    audio_path = factory.LazyFunction(lambda: f"/tmp/test_audio_{uuid.uuid4().hex}.wav")
     role = "custom"
     is_cloned = False
     qwen_voice_id = None
@@ -40,7 +39,7 @@ class VoiceProfileFactory(SQLAlchemyModelFactory):
             is_cloned=True,
             qwen_voice_id=f"cloned_{uuid.uuid4().hex}",
             cloned_at=datetime.utcnow(),
-            **kwargs
+            **kwargs,
         )
 
 
@@ -89,9 +88,7 @@ class TimelineSegmentFactory(SQLAlchemyModelFactory):
     text = factory.Faker("sentence")
     start_time = factory.Sequence(lambda n: float(n))
     end_time = factory.Sequence(lambda n: float(n + 1))
-    audio_path = factory.LazyFunction(
-        lambda: f"/tmp/test_segment_{uuid.uuid4().hex}.wav"
-    )
+    audio_path = factory.LazyFunction(lambda: f"/tmp/test_segment_{uuid.uuid4().hex}.wav")
     created_at = factory.LazyFunction(datetime.utcnow)
 
 

@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, DateTime, Boolean
-from sqlalchemy.orm import relationship
-from datetime import datetime
 import uuid
+from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 

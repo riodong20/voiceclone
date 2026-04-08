@@ -1,0 +1,69 @@
+[project]
+name = "voiceclone-backend"
+version = "0.1.0"
+description = "Voice Clone Studio Backend - FastAPI with Qwen CosyVoice"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "sqlalchemy>=2.0.25",
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    "python-multipart>=0.0.6",
+    "aiofiles>=23.2.1",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.26.0",
+    "dashscope>=1.25.0",
+    "ruff>=0.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.2",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "pytest-xdist>=3.5.0",
+    "httpx>=0.26.0",
+    "requests-mock>=1.11.0",
+    "sqlalchemy-utils>=0.41.1",
+    "freezegun>=1.2.2",
+    "factory-boy>=3.3.0",
+    "Faker>=21.0.0",
+    "starlette-testclient>=0.3.0",
+    # Linting & Code Quality
+    "ruff>=0.4.0",
+    "mypy>=1.8.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "migrations",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = []
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.4.0",
+    "mypy>=1.8.0",
+]

@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from datetime import datetime
 import uuid
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, String
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -15,7 +16,9 @@ class TimelineProject(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    segments = relationship("TimelineSegment", back_populates="project", cascade="all, delete-orphan")
+    segments = relationship(
+        "TimelineSegment", back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class TimelineSegment(Base):

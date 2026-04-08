@@ -1,10 +1,11 @@
 """
 Qwen TTS 服务单元测试
 """
-import pytest
+
 import base64
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch
+
+import pytest
 
 from app.services.qwen_tts_service import QwenTTSService
 
@@ -55,17 +56,9 @@ class TestQwenTTSService:
 
             # 模拟音频数据
             mock_audio_data = b"fake_audio_data"
-            base64_audio = base64.b64encode(mock_audio_data).decode("utf-8")
+            base64.b64encode(mock_audio_data).decode("utf-8")
 
             # 模拟成功的 API 响应
-            mock_response = {
-                "code": "Success",
-                "output": {
-                    "audio": {
-                        "data": base64_audio
-                    }
-                }
-            }
 
             with patch.object(service, "_synthesize_speech_sync") as mock_sync:
                 mock_sync.return_value = mock_audio_data
@@ -96,13 +89,9 @@ class TestQwenTTSService:
             with patch.object(service, "_synthesize_speech_sync") as mock_sync:
                 mock_sync.return_value = b"audio_data"
 
-                result = await service.synthesize_speech(
-                    text="Test text"
-                )
+                await service.synthesize_speech(text="Test text")
 
-                mock_sync.assert_called_once_with(
-                    "Test text", "xiaoyun", 1.0, 80, 0, "wav", 16000
-                )
+                mock_sync.assert_called_once_with("Test text", "xiaoyun", 1.0, 80, 0, "wav", 16000)
 
     @pytest.mark.asyncio
     async def test_clone_voice_success(self):
@@ -144,21 +133,18 @@ class TestQwenTTSService:
             expected_result = {
                 "voice_id": "registered_voice_123",
                 "voice_name": "Test Voice",
-                "role": "custom"
+                "role": "custom",
             }
 
             with patch.object(service, "_register_cloned_voice_sync") as mock_sync:
                 mock_sync.return_value = expected_result
 
                 result = await service.register_cloned_voice(
-                    reference_audio_path=test_audio_path,
-                    voice_name="Test Voice"
+                    reference_audio_path=test_audio_path, voice_name="Test Voice"
                 )
 
                 assert result == expected_result
-                mock_sync.assert_called_once_with(
-                    test_audio_path, "Test Voice"
-                )
+                mock_sync.assert_called_once_with(test_audio_path, "Test Voice")
 
     @pytest.mark.asyncio
     async def test_register_cloned_voice_with_default_name(self):
@@ -172,16 +158,12 @@ class TestQwenTTSService:
                 mock_sync.return_value = {
                     "voice_id": "test_voice",
                     "voice_name": "cloned_voice",
-                    "role": "custom"
+                    "role": "custom",
                 }
 
-                result = await service.register_cloned_voice(
-                    reference_audio_path="/tmp/test.wav"
-                )
+                await service.register_cloned_voice(reference_audio_path="/tmp/test.wav")
 
-                mock_sync.assert_called_once_with(
-                    "/tmp/test.wav", "cloned_voice"
-                )
+                mock_sync.assert_called_once_with("/tmp/test.wav", "cloned_voice")
 
     def test_wait_for_task_completion_success(self):
         """测试等待任务完成成功"""
@@ -191,21 +173,20 @@ class TestQwenTTSService:
             service = QwenTTSService()
 
             task_id = "test_task_123"
-            success_response = {
+            {
                 "output": {
                     "task_status": "SUCCEEDED",
-                    "audio": {
-                        "data": base64.b64encode(b"audio_data").decode("utf-8")
-                    }
+                    "audio": {"data": base64.b64encode(b"audio_data").decode("utf-8")},
                 }
             }
 
             with patch("urllib.request.urlopen") as mock_urlopen:
                 mock_response = Mock()
-                mock_response.read.return_value = bytes(
-                    '{"output": {"task_status": "SUCCEEDED", "audio": {"data": "YXVkaW9fZGF0YQ=="}}}',
-                    "utf-8"
+                json_str = (
+                    '{"output": {"task_status": "SUCCEEDED", '
+                    '"audio": {"data": "YXVkaW9fZGF0YQ=="}}}'
                 )
+                mock_response.read.return_value = bytes(json_str, "utf-8")
                 mock_urlopen.return_value.__enter__.return_value = mock_response
 
                 result = service._wait_for_task_completion(task_id, max_retries=1, delay=0)
@@ -221,19 +202,14 @@ class TestQwenTTSService:
             service = QwenTTSService()
 
             task_id = "test_task_123"
-            failed_response = {
-                "output": {
-                    "task_status": "FAILED",
-                    "message": "Task failed due to invalid input"
-                }
-            }
 
             with patch("urllib.request.urlopen") as mock_urlopen:
                 mock_response = Mock()
-                mock_response.read.return_value = bytes(
-                    '{"output": {"task_status": "FAILED", "message": "Task failed due to invalid input"}}',
-                    "utf-8"
+                json_str = (
+                    '{"output": {"task_status": "FAILED", '
+                    '"message": "Task failed due to invalid input"}}'
                 )
+                mock_response.read.return_value = bytes(json_str, "utf-8")
                 mock_urlopen.return_value.__enter__.return_value = mock_response
 
                 with pytest.raises(Exception, match="TTS task failed"):
@@ -251,8 +227,7 @@ class TestQwenTTSService:
             with patch("urllib.request.urlopen") as mock_urlopen:
                 mock_response = Mock()
                 mock_response.read.return_value = bytes(
-                    '{"output": {"task_status": "PENDING"}}',
-                    "utf-8"
+                    '{"output": {"task_status": "PENDING"}}', "utf-8"
                 )
                 mock_urlopen.return_value.__enter__.return_value = mock_response
 
@@ -262,10 +237,10 @@ class TestQwenTTSService:
     @pytest.mark.asyncio
     async def test_get_tts_service_singleton(self):
         """测试 get_tts_service 单例模式"""
-        from app.services.qwen_tts_service import get_tts_service, _tts_service
-
         # 确保全局变量为 None
         import app.services.qwen_tts_service as tts_module
+        from app.services.qwen_tts_service import get_tts_service
+
         tts_module._tts_service = None
 
         with patch("app.services.qwen_tts_service.settings") as mock_settings:
@@ -282,15 +257,17 @@ class TestQwenTTSService:
     @pytest.mark.asyncio
     async def test_close_tts_service(self):
         """测试关闭 TTS 服务"""
-        from app.services.qwen_tts_service import get_tts_service, close_tts_service, _tts_service
-
         import app.services.qwen_tts_service as tts_module
+        from app.services.qwen_tts_service import (
+            close_tts_service,
+            get_tts_service,
+        )
 
         with patch("app.services.qwen_tts_service.settings") as mock_settings:
             mock_settings.qwen_api_key = "test_api_key"
 
             # 获取服务
-            service = await get_tts_service()
+            await get_tts_service()
             assert tts_module._tts_service is not None
 
             # 关闭服务
@@ -325,22 +302,14 @@ class TestQwenTTSService:
 
             service = QwenTTSService()
 
-            mock_response_data = {
-                "code": "Success",
-                "output": {
-                    "voices": [
-                        {"voice_id": "voice_001", "preferred_name": "clone001", "status": "OK"},
-                        {"voice_id": "voice_002", "preferred_name": "clone002", "status": "OK"},
-                    ]
-                }
-            }
-
             with patch("urllib.request.urlopen") as mock_urlopen:
                 mock_response = Mock()
-                mock_response.read.return_value = bytes(
-                    '{"code": "Success", "output": {"voices": [{"voice_id": "voice_001", "preferred_name": "clone001", "status": "OK"}, {"voice_id": "voice_002", "preferred_name": "clone002", "status": "OK"}]}}',
-                    "utf-8"
+                json_str = (
+                    '{"code": "Success", "output": {"voices": '
+                    '[{"voice_id": "voice_001", "preferred_name": "clone001", "status": "OK"}, '
+                    '{"voice_id": "voice_002", "preferred_name": "clone002", "status": "OK"}]}}'
                 )
+                mock_response.read.return_value = bytes(json_str, "utf-8")
                 mock_urlopen.return_value.__enter__.return_value = mock_response
 
                 result = service._list_cloned_voices_sync()
@@ -359,8 +328,7 @@ class TestQwenTTSService:
             with patch("urllib.request.urlopen") as mock_urlopen:
                 mock_response = Mock()
                 mock_response.read.return_value = bytes(
-                    '{"code": "Success", "output": {"voices": []}}',
-                    "utf-8"
+                    '{"code": "Success", "output": {"voices": []}}', "utf-8"
                 )
                 mock_urlopen.return_value.__enter__.return_value = mock_response
 
@@ -378,8 +346,7 @@ class TestQwenTTSService:
             with patch("urllib.request.urlopen") as mock_urlopen:
                 mock_response = Mock()
                 mock_response.read.return_value = bytes(
-                    '{"code": "Success", "output": {}}',
-                    "utf-8"
+                    '{"code": "Success", "output": {}}', "utf-8"
                 )
                 mock_urlopen.return_value.__enter__.return_value = mock_response
 

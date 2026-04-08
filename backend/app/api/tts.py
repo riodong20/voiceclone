@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import List, Optional
-import uuid
-import os
-import aiofiles
 import logging
+import os
+import uuid
+from typing import List, Optional
 
-from app.core.database import get_db
+import aiofiles
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.core.config import settings
-from app.services.qwen_tts_service import get_tts_service, QwenTTSService
+from app.core.database import get_db
+from app.services.qwen_tts_service import get_tts_service
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class BatchTTSRequest(BaseModel):
 async def synthesize_speech(request: TTSRequest, db: Session = Depends(get_db)):
     """
     合成语音 - 使用千问 TTS API
-    
+
     为什么需要检查 voice_id：
     - 如果传入了 voice_id（克隆的声音），需要使用声音克隆模型
     - 如果没有传入，则使用标准 TTS 模型和默认声音
@@ -101,7 +102,7 @@ async def synthesize_speech(request: TTSRequest, db: Session = Depends(get_db)):
                 "emotion": request.emotion,
                 "voice_id": voice_id,
                 "is_cloned_voice": is_cloned_voice,
-            }
+            },
         }
 
     except Exception as e:
@@ -137,13 +138,15 @@ async def batch_synthesize(request: BatchTTSRequest, db: Session = Depends(get_d
             async with aiofiles.open(audio_path, "wb") as f:
                 await f.write(audio_data)
 
-            results.append({
-                "audio_id": audio_id,
-                "audio_url": f"/api/tts/audio/{audio_id}",
-                "text": segment.text,
-                "start_time": segment.start_time,
-                "end_time": segment.end_time
-            })
+            results.append(
+                {
+                    "audio_id": audio_id,
+                    "audio_url": f"/api/tts/audio/{audio_id}",
+                    "text": segment.text,
+                    "start_time": segment.start_time,
+                    "end_time": segment.end_time,
+                }
+            )
 
         return {"segments": results}
 
@@ -157,6 +160,7 @@ async def get_tts_audio(audio_id: str):
     audio_path = settings.voices_dir / f"tts_{audio_id}.wav"
 
     from fastapi.responses import FileResponse
+
     if os.path.exists(audio_path):
         return FileResponse(audio_path, media_type="audio/wav")
     else:

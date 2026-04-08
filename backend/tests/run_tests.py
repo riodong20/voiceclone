@@ -3,19 +3,20 @@
 测试运行脚本
 支持不同测试类型的运行和覆盖率报告
 """
-import os
-import sys
-import subprocess
+
 import argparse
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 
 def run_command(cmd, description):
     """运行命令并显示输出"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"正在运行: {description}")
     print(f"命令: {cmd}")
-    print('='*60)
+    print("=" * 60)
 
     try:
         result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
@@ -66,12 +67,14 @@ def run_tests(test_type, coverage=False, verbose=False):
 
     # 添加覆盖率参数
     if coverage:
-        cmd_parts.extend([
-            "--cov=app",
-            "--cov-report=term",
-            "--cov-report=html:coverage_html",
-            "--cov-report=xml:coverage.xml"
-        ])
+        cmd_parts.extend(
+            [
+                "--cov=app",
+                "--cov-report=term",
+                "--cov-report=html:coverage_html",
+                "--cov-report=xml:coverage.xml",
+            ]
+        )
 
     # 执行命令
     cmd = " ".join(cmd_parts)
@@ -122,7 +125,7 @@ def install_test_dependencies():
         cmd = f"pip install -r {requirements_file}"
         return run_command(cmd, "安装测试依赖")
     else:
-        print(f"错误: 未找到 requirements-test.txt 文件")
+        print("错误: 未找到 requirements-test.txt 文件")
         return False
 
 
@@ -135,24 +138,12 @@ def main():
         default="all",
         choices=["unit", "integration", "api", "all", "lint", "types", "coverage", "install"],
         help="测试类型: unit(单元测试), integration(集成测试), api(API测试), "
-             "all(所有测试), lint(代码检查), types(类型检查), "
-             "coverage(覆盖率报告), install(安装测试依赖)"
+        "all(所有测试), lint(代码检查), types(类型检查), "
+        "coverage(覆盖率报告), install(安装测试依赖)",
     )
-    parser.add_argument(
-        "--coverage", "-c",
-        action="store_true",
-        help="运行测试时生成覆盖率报告"
-    )
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="显示详细输出"
-    )
-    parser.add_argument(
-        "--quick",
-        action="store_true",
-        help="快速运行（不运行慢速测试）"
-    )
+    parser.add_argument("--coverage", "-c", action="store_true", help="运行测试时生成覆盖率报告")
+    parser.add_argument("--verbose", "-v", action="store_true", help="显示详细输出")
+    parser.add_argument("--quick", action="store_true", help="快速运行（不运行慢速测试）")
 
     args = parser.parse_args()
 
@@ -174,7 +165,7 @@ def main():
         success = run_tests(args.test_type, coverage=args.coverage, verbose=args.verbose)
 
     # 输出结果
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     if success:
         print("✓ 测试执行成功")
         sys.exit(0)

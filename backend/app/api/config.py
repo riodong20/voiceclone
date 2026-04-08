@@ -1,10 +1,11 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List, Optional
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import TTSConfig, ModelProvider, Emotion
+from app.models import Emotion, ModelProvider, TTSConfig
 
 router = APIRouter()
 
@@ -43,7 +44,7 @@ def list_configs(db: Session = Depends(get_db)):
             "volume": c.volume,
             "pitch": c.pitch,
             "emotion": c.emotion.value if c.emotion else "neutral",
-            "is_default": c.is_default
+            "is_default": c.is_default,
         }
         for c in configs
     ]
@@ -60,7 +61,7 @@ def create_config(data: ConfigCreate, db: Session = Depends(get_db)):
         volume=data.volume,
         pitch=data.pitch,
         emotion=Emotion(data.emotion),
-        is_default=False
+        is_default=False,
     )
     db.add(config)
     db.commit()
@@ -74,7 +75,7 @@ def create_config(data: ConfigCreate, db: Session = Depends(get_db)):
         "speed": config.speed,
         "volume": config.volume,
         "pitch": config.pitch,
-        "emotion": config.emotion.value
+        "emotion": config.emotion.value,
     }
 
 
@@ -111,7 +112,7 @@ def update_config(config_id: str, data: ConfigUpdate, db: Session = Depends(get_
         "speed": config.speed,
         "volume": config.volume,
         "pitch": config.pitch,
-        "emotion": config.emotion.value
+        "emotion": config.emotion.value,
     }
 
 

@@ -1,8 +1,10 @@
 """
 VoiceProfile 模型单元测试
 """
-import pytest
+
 from datetime import datetime
+
+import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.models.voice_profile import VoiceProfile
@@ -170,6 +172,7 @@ class TestVoiceProfileModel:
     def test_voice_profile_created_at_auto_set(self, db_session):
         """测试 created_at 自动设置"""
         import time
+
         before_create = datetime.utcnow()
         time.sleep(0.01)  # 确保时间不同
 
