@@ -7,13 +7,14 @@ from datetime import datetime
 
 import aiofiles
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import VoiceProfile
 from app.services.qwen_tts_service import get_tts_service
+from app.services.storage_service import get_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,6 @@ class RegisterRequest(BaseModel):
     name: str = None
     role: str = "custom"
 
-
-from pydantic import Field, validator
 
 class CloneSynthesizeRequest(BaseModel):
     voice_id: str
@@ -133,22 +132,39 @@ async def upload_voice(file: UploadFile = File(...), db: Session = Depends(get_d
             # 删除临时文件
             os.remove(temp_webm_path)
 
-            file_path = str(final_mp3_path)
+            # 读取转换后的文件内容
+            async with aiofiles.open(final_mp3_path, "rb") as f:
+                mp3_content = await f.read()
+
+            # 使用存储服务保存文件
+            storage_service = get_storage_service()
+            saved_file_path = await storage_service.save_file(
+                mp3_content,
+                f"{file_id}.mp3"
+            )
+
+            # 删除本地转换后的临时文件
+            os.remove(final_mp3_path)
+
+            file_path = saved_file_path
             file_extension = "mp3"
 
         except Exception as e:
             # 清理临时文件
             if os.path.exists(temp_webm_path):
                 os.remove(temp_webm_path)
+            if 'final_mp3_path' in locals() and os.path.exists(final_mp3_path):
+                os.remove(final_mp3_path)
             raise HTTPException(status_code=500, detail=f"Failed to convert audio: {str(e)}")
     else:
         # 直接保存其他格式
         file_extension = file_ext
-        file_path = settings.voices_dir / f"{file_id}.{file_extension}"
+        file_name = f"{file_id}.{file_extension}"
+        content = await file.read()
 
-        async with aiofiles.open(file_path, "wb") as f:
-            content = await file.read()
-            await f.write(content)
+        # 使用存储服务保存文件
+        storage_service = get_storage_service()
+        file_path = await storage_service.save_file(content, file_name)
 
     voice = VoiceProfile(
         id=file_id,
@@ -160,10 +176,11 @@ async def upload_voice(file: UploadFile = File(...), db: Session = Depends(get_d
     db.commit()
     db.refresh(voice)
 
+    storage_service = get_storage_service()
     return {
         "id": voice.id,
         "name": voice.name,
-        "audio_url": f"/api/clone/audio/{voice.id}",
+        "audio_url": storage_service.get_file_url(file_path),
         "is_cloned": voice.is_cloned,
     }
 

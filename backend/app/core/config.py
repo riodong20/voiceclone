@@ -36,6 +36,17 @@ class Settings(BaseSettings):
     log_file_max_bytes: int = 10 * 1024 * 1024  # 10MB
     log_backup_count: int = 7  # 保留 7 个备份文件
 
+    # 存储配置
+    # 可选值: local (本地存储), obs (华为云OBS)
+    STORAGE_TYPE: str = "local"
+
+    # 华为云OBS配置（预留）
+    OBS_ENDPOINT: str = ""
+    OBS_BUCKET: str = ""
+    OBS_ACCESS_KEY: str = ""
+    OBS_SECRET_KEY: str = ""
+    OBS_DOMAIN: str = ""  # OBS自定义域名（可选，用于CDN加速）
+
     class Config:
         env_file = ".env"
 
