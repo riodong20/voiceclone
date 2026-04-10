@@ -71,12 +71,20 @@ class RegisterRequest(BaseModel):
     role: str = "custom"
 
 
+from pydantic import Field, validator
+
 class CloneSynthesizeRequest(BaseModel):
     voice_id: str
-    text: str
-    speed: float = 1.0
-    volume: float = 80
-    pitch: int = 0
+    text: str = Field(..., min_length=1, max_length=1000, description="合成文本，长度1-1000字符")
+    speed: float = Field(1.0, ge=0.5, le=2.0, description="语速，范围0.5-2.0")
+    volume: float = Field(80, ge=0, le=100, description="音量，范围0-100")
+    pitch: int = Field(0, ge=-12, le=12, description="音调，范围-12到12")
+
+    @validator("text")
+    def text_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError("Text cannot be empty or whitespace")
+        return v
 
 
 class UploadFromUrlRequest(BaseModel):

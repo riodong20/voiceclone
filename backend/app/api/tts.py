@@ -5,7 +5,7 @@ from typing import List, Optional
 
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -18,26 +18,44 @@ router = APIRouter()
 
 
 class TTSRequest(BaseModel):
-    text: str
-    speed: float = 1.0
-    volume: float = 80
-    pitch: int = 0
-    emotion: str = "neutral"
-    voice_id: Optional[str] = None
+    text: str = Field(..., min_length=1, max_length=1000, description="合成文本，长度1-1000字符")
+    speed: float = Field(1.0, ge=0.5, le=2.0, description="语速，范围0.5-2.0")
+    volume: float = Field(80, ge=0, le=100, description="音量，范围0-100")
+    pitch: int = Field(0, ge=-12, le=12, description="音调，范围-12到12")
+    emotion: str = Field("neutral", description="情感类型")
+    voice_id: Optional[str] = Field(None, description="克隆声音ID，可选")
+
+    @validator("text")
+    def text_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError("Text cannot be empty or whitespace")
+        return v
 
 
 class SegmentRequest(BaseModel):
-    text: str
-    start_time: float
-    end_time: float
+    text: str = Field(..., min_length=1, max_length=1000, description="片段文本，长度1-1000字符")
+    start_time: float = Field(..., ge=0, description="开始时间，大于等于0")
+    end_time: float = Field(..., ge=0, description="结束时间，大于等于0")
+
+    @validator("text")
+    def text_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError("Text cannot be empty or whitespace")
+        return v
+
+    @validator("end_time")
+    def end_time_greater_than_start(cls, v, values):
+        if "start_time" in values and v <= values["start_time"]:
+            raise ValueError("End time must be greater than start time")
+        return v
 
 
 class BatchTTSRequest(BaseModel):
-    segments: List[SegmentRequest]
-    speed: float = 1.0
-    volume: float = 80
-    pitch: int = 0
-    emotion: str = "neutral"
+    segments: List[SegmentRequest] = Field(..., min_length=1, description="语音片段列表，至少1个片段")
+    speed: float = Field(1.0, ge=0.5, le=2.0, description="语速，范围0.5-2.0")
+    volume: float = Field(80, ge=0, le=100, description="音量，范围0-100")
+    pitch: int = Field(0, ge=-12, le=12, description="音调，范围-12到12")
+    emotion: str = Field("neutral", description="情感类型")
 
 
 @router.post("/synthesize")
