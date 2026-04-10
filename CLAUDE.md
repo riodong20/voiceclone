@@ -13,14 +13,28 @@ Voice Clone Studio - A web application for voice cloning and text-to-speech synt
 cd frontend
 npm run dev      # Start dev server (port 5173)
 npm run build    # Production build
-npm run lint     # Run ESLint
+npm run lint     # Run ESLint (checks ts/tsx/js/jsx files)
+npm run lint -- path/to/file.ts  # Lint specific
 ```
+
+**ESLint Config:** `frontend/eslint.config.js`
 
 ### Backend
 ```bash
 cd backend
-source .venv/Scripts/activate  # Windows: .venv\Scripts\activate
-python -m uvicorn main:app --host 127.0.0.1 --port 8002
+uv run uvicorn main:app --host 127.0.0.1 --port 8002
+
+# Linting (ruff replaces black + flake8 + isort)
+uv run ruff check .        # Check all files
+uv run ruff check --fix .  # Auto-fix issues
+uv run ruff format .        # Format files
+uv run ruff check file.py  # Lint specific file
+uv run mypy .
+uv run mypy xx.py #
+
+# Testing
+uv run pytest -v             # Run all tests
+uv run pytest --cov=app --cov-report=html  # Run tests with coverage
 ```
 
 ### API Testing
@@ -35,6 +49,11 @@ curl http://127.0.0.1:8002/health
 - `app/models/` - SQLAlchemy ORM models
 - `app/services/` - Business logic
 - `app/core/` - Utilities and config
+
+### Documentation
+- `docs/plans/` - Feature implementation plans
+- `docs/solutions/` - Documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter
+- `docs/knowledge/` - Knowledge base and implementation guides
 
 ### Frontend (React + TypeScript + Vite)
 - `src/pages/` - Route pages
@@ -91,6 +110,15 @@ Available gstack skills:
 - `/guard` - Guard against bad commits
 - `/unfreeze` - Unfreeze codebase
 - `/gstack-upgrade` - Upgrade gstack
+
+## Linting Requirements
+
+**CRITICAL: Every modified file must be linted before considering work complete.**
+
+- Frontend: After editing any `.ts`, `.tsx`, `.js`, `.jsx` file in `frontend/`, run `npm run lint -- <file_path>`
+- Backend: After editing any `.py` file in `backend/`, run `uv run lint -- <file_path>` (同时执行ruff代码检查和mypy类型检查)
+
+Always verify linting passes before marking a task as complete.
 
 ## Environment
 

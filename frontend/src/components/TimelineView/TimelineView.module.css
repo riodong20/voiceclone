@@ -172,6 +172,31 @@
   margin-bottom: var(--spacing-md);
 }
 
+.searchContainer {
+  margin-bottom: var(--spacing-md);
+}
+
+.searchInput {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-disabled);
+}
+
 .uploadZone {
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-lg);
@@ -205,6 +230,12 @@
   color: var(--color-text-secondary);
 }
 
+.recordSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 .recordButton {
   width: 100%;
   padding: var(--spacing-md);
@@ -234,7 +265,18 @@
 .recordButton.recording {
   border-color: var(--color-error);
   color: var(--color-error);
+}
+
+.recordIcon.pulsing {
   animation: pulse 1.5s infinite;
+}
+
+.recordingDuration {
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
 }
 
 .uploadZone.dragging {
@@ -316,6 +358,33 @@
   color: var(--color-text-primary);
 }
 
+.voiceActionButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  color: var(--color-text-secondary);
+}
+
+.voiceActionButton:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.clonedBadge {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .voiceCheck {
   color: var(--color-success);
   font-size: 14px;
@@ -349,6 +418,94 @@
 
 .emptyHint {
   font-size: var(--font-size-sm);
+}
+
+/* Voice Picker */
+.voicePicker {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.voicePickerTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.ttsParamsSection {
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.paramGroup {
+  margin-bottom: var(--spacing-md);
+}
+
+.paramLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.paramResetButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.paramResetButton:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.paramSlider {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.paramSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.paramSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.paramSlider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-fast);
+}
+
+.paramSlider::-moz-range-thumb:hover {
+  transform: scale(1.2);
 }
 
 /* Responsive */

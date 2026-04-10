@@ -61,6 +61,9 @@ def list_projects(db: Session = Depends(get_db)):
                     if s.audio_path
                     else None,
                     "voice_id": s.voice_id,
+                    "tts_speed": s.tts_speed,
+                    "tts_pitch": s.tts_pitch,
+                    "tts_volume": s.tts_volume,
                 }
                 for s in segments
             ],
@@ -95,6 +98,10 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
                 "audio_url": f"/api/tts/audio/{s.audio_path.split('/')[-1].replace('.wav', '')}"
                 if s.audio_path
                 else None,
+                "voice_id": s.voice_id,
+                "tts_speed": s.tts_speed,
+                "tts_pitch": s.tts_pitch,
+                "tts_volume": s.tts_volume,
             }
             for s in segments
         ],
@@ -202,12 +209,24 @@ async def synthesize_project(project_id: str, db: Session = Depends(get_db)):
         audio_path = settings.voices_dir / f"tts_{audio_id}.wav"
 
         try:
+            # Use segment's voice if assigned, otherwise default to xiaoyun
+            voice_id = (
+                segment.voice.qwen_voice_id
+                if segment.voice and segment.voice.qwen_voice_id
+                else "xiaoyun"
+            )
+
+            # Use segment's TTS parameters or defaults
+            speed = segment.tts_speed if segment.tts_speed is not None else 1.0
+            volume = segment.tts_volume if segment.tts_volume is not None else 80.0
+            pitch = segment.tts_pitch if segment.tts_pitch is not None else 0.0
+
             audio_data = await tts_service.synthesize_speech(
                 text=segment.text,
-                voice_id="xiaoyun",
-                speed=1.0,
-                volume=80,
-                pitch=0,
+                voice_id=voice_id,
+                speed=speed,
+                volume=int(volume),
+                pitch=int(pitch),
                 format="wav",
                 sample_rate=16000,
             )
@@ -239,6 +258,9 @@ async def synthesize_project(project_id: str, db: Session = Depends(get_db)):
 
 class VoiceAssignmentRequest(BaseModel):
     voice_id: str
+    speed: float | None = None
+    pitch: float | None = None
+    volume: float | None = None
 
 
 @router.post("/segment/{segment_id}/voice")
@@ -257,6 +279,13 @@ def assign_voice_to_segment(
         raise HTTPException(status_code=404, detail="Voice not found")
 
     segment.voice_id = request.voice_id
+    # Save TTS parameters if provided
+    if request.speed is not None:
+        segment.tts_speed = max(0.5, min(2.0, request.speed))
+    if request.pitch is not None:
+        segment.tts_pitch = max(-12.0, min(12.0, request.pitch))
+    if request.volume is not None:
+        segment.tts_volume = max(0.0, min(100.0, request.volume))
     db.commit()
     db.refresh(segment)
 

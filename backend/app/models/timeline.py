@@ -34,6 +34,11 @@ class TimelineSegment(Base):
     # NEW: Voice assignment for this segment
     voice_id = Column(String, ForeignKey("voice_profiles.id"), nullable=True)
 
+    # TTS parameters for this segment
+    tts_speed = Column(Float, default=1.0, nullable=True)
+    tts_pitch = Column(Float, default=0.0, nullable=True)
+    tts_volume = Column(Float, default=80.0, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships

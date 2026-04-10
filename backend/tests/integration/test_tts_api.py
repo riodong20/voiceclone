@@ -183,14 +183,11 @@ class TestTTSAPI:
             assert kwargs["voice_id"] == "xiaoyun"  # 批量使用默认声音
 
     def test_batch_synthesize_empty_segments(self, client: TestClient):
-        """测试空段落的批量合成"""
+        """测试空段落的批量合成 - 空列表应该返回验证错误"""
         request_data = {"segments": [], "speed": 1.0, "volume": 80}
 
         response = client.post("/api/tts/batch", json=request_data)
-        assert response.status_code == 200
-        data = response.json()
-        assert "segments" in data
-        assert len(data["segments"]) == 0
+        assert response.status_code == 422  # 空列表不符合验证规则，至少需要1个片段
 
     def test_batch_synthesize_with_defaults(self, client: TestClient, mock_tts_service):
         """测试使用默认参数的批量合成"""
@@ -238,13 +235,14 @@ class TestTTSAPI:
     def test_get_tts_audio_success(self, client: TestClient):
         """测试获取 TTS 音频文件成功"""
         import os
+        from app.core.config import settings
 
         # 创建测试音频文件
         audio_id = "test_audio_123"
         audio_content = b"fake audio data"
 
         # 将文件保存到测试目录
-        audio_path = client.app.state.settings.voices_dir / f"tts_{audio_id}.wav"
+        audio_path = settings.voices_dir / f"tts_{audio_id}.wav"
         with open(audio_path, "wb") as f:
             f.write(audio_content)
 

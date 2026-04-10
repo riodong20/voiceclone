@@ -25,6 +25,12 @@ export const voiceApi = {
     return all.filter(v => v.is_cloned && v.qwen_voice_id);
   },
 
+  // 只获取已采集但未克隆的声音
+  listCollected: async (): Promise<VoiceProfile[]> => {
+    const all = await voiceApi.list();
+    return all.filter(v => !v.is_cloned);
+  },
+
   delete: async (id: string): Promise<void> => {
     await api.delete(`/clone/${id}`);
   },
@@ -125,6 +131,17 @@ export const timelineApi = {
 
   deleteSegment: async (segmentId: string): Promise<void> => {
     await api.delete(`/timeline/segment/${segmentId}`);
+  },
+
+  assignVoiceToSegment: async (segmentId: string, voiceId: string, params?: { speed?: number; pitch?: number; volume?: number }): Promise<void> => {
+    await api.post(`/timeline/segment/${segmentId}/voice`, {
+      voice_id: voiceId,
+      ...params
+    });
+  },
+
+  removeVoiceFromSegment: async (segmentId: string): Promise<void> => {
+    await api.delete(`/timeline/segment/${segmentId}/voice`);
   },
 
   synthesizeProject: async (projectId: string): Promise<{ segments: Array<{ segment_id: string; audio_id: string; audio_url: string; text: string; start_time: number; end_time: number }> }> => {

@@ -78,7 +78,7 @@ export const mockApiResponses = {
 };
 
 // Mock fetch implementation
-export function setupMockFetch(responseMap: Map<string, any>) {
+export function setupMockFetch(responseMap: Map<string, unknown>) {
   return vi.fn().mockImplementation((url: string) => {
     const response = responseMap.get(url);
     if (response !== undefined) {

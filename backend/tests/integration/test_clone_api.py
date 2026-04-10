@@ -66,8 +66,9 @@ class TestCloneAPI:
 
         os.unlink(temp_file.name)
 
-        # 虽然文件类型不对，但API应该接受（实际验证在业务逻辑中）
-        assert response.status_code == 200
+        # API会在入口验证文件类型，无效格式返回400
+        assert response.status_code == 400
+        assert "Unsupported file format" in response.json()["detail"]
 
     def test_list_voices_empty(self, client: TestClient):
         """测试获取空声音列表"""

@@ -27,3 +27,6 @@ class VoiceProfile(Base):
 
     # Relationships
     segments = relationship("TimelineSegment", back_populates="voice")
+
+    def __repr__(self) -> str:
+        return f"<VoiceProfile(id='{self.id}', name='{self.name}', is_cloned={self.is_cloned})>"
