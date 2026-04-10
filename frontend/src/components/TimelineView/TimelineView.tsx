@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import type { TimelineProject, TimelineSegment, VoiceProfile } from '../../types';
 import { VideoPlayer } from '../Timeline/VideoPlayer';
 import { timelineApi, voiceApi } from '../../services/api';
+import { AudioRecorder } from '../VoiceClone';
 import styles from './TimelineView.module.css';
 
 interface TimelineViewProps {
@@ -285,11 +286,6 @@ function VoicePanel({ voices, onVoicesUpdated }: VoicePanelProps) {
   const [activeTab, setActiveTab] = useState<'clone' | 'library' | 'collected'>('clone');
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordedChunks, setRecordedChunks] = useState<BlobPart[]>([]);
-  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
-  const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [voiceSearchQuery, setVoiceSearchQuery] = useState<string>('');
@@ -332,29 +328,6 @@ function VoicePanel({ voices, onVoicesUpdated }: VoicePanelProps) {
     setAudioElement(audio);
     setPlayingVoiceId(voice.id);
   }, [playingVoiceId, audioElement]);
-
-  // Update recording duration every second while recording
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (isRecording && recordingStartTime) {
-      interval = setInterval(() => {
-        const now = Date.now();
-        setRecordingDuration(Math.floor((now - recordingStartTime) / 1000));
-      }, 1000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRecording, recordingStartTime]);
-
-  // Format duration as MM:SS
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   // Handle file upload
   const handleFileUpload = useCallback(async (file: File) => {
@@ -413,49 +386,6 @@ function VoicePanel({ voices, onVoicesUpdated }: VoicePanelProps) {
     input.click();
   }, [handleFileUpload]);
 
-  // Recording handlers
-  const handleRecordToggle = useCallback(async () => {
-    if (isRecording) {
-      // Stop recording
-      mediaRecorder?.stop();
-      setIsRecording(false);
-      setMediaRecorder(null);
-      setRecordingStartTime(null);
-
-      if (recordedChunks.length > 0) {
-        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-        const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
-        await handleFileUpload(file);
-        setRecordedChunks([]);
-      }
-    } else {
-      // Start recording
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream);
-        setMediaRecorder(recorder);
-        setRecordedChunks([]);
-
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            setRecordedChunks(prev => [...prev, e.data]);
-          }
-        };
-
-        recorder.onstop = () => {
-          stream.getTracks().forEach(track => track.stop());
-        };
-
-        recorder.start();
-        setRecordingStartTime(Date.now());
-        setRecordingDuration(0);
-        setIsRecording(true);
-      } catch (error) {
-        console.error('Recording failed:', error);
-        alert('Failed to start recording. Please allow microphone access.');
-      }
-    }
-  }, [isRecording, mediaRecorder, recordedChunks, handleFileUpload]);
 
   return (
     <div className={styles.voicePanel}>
@@ -518,23 +448,7 @@ function VoicePanel({ voices, onVoicesUpdated }: VoicePanelProps) {
               </div>
             </div>
 
-            <div className={styles.recordSection}>
-              <button
-                className={`${styles.recordButton} ${isRecording ? styles.recording : ''}`}
-                onClick={handleRecordToggle}
-                disabled={isUploading}
-              >
-                <span className={`${styles.recordIcon} ${isRecording ? styles.pulsing : ''}`}>
-                  {isRecording ? '🔴' : '🎙️'}
-                </span>
-                <span>{isRecording ? 'Stop Recording' : 'Record Voice Sample'}</span>
-              </button>
-              {isRecording && (
-                <div className={styles.recordingDuration} aria-label={`Recording duration: ${formatDuration(recordingDuration)}`}>
-                  {formatDuration(recordingDuration)}
-                </div>
-              )}
-            </div>
+            <AudioRecorder onRecordComplete={onVoicesUpdated} />
           </div>
         ) : activeTab === 'collected' ? (
           <div className={styles.voiceListSection}>
