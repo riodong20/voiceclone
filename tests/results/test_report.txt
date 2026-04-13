@@ -1,0 +1,34 @@
+Voice Clone Studio 功能测试报告
+========================================
+测试时间: 2026-04-10 09:42:44
+测试版本: v0.1.0.0
+通过用例: 2/5
+
+测试详情:
+❌ FAIL 1.1 首页正常加载，核心元素可见: Locator expected to be visible
+Actual value: None
+Error: strict mode violation: get_by_text("Clone") resolved to 3 elements:
+    1) <span>Voice Clone Studio</span> aka get_by_text("Voice Clone Studio")
+    2) <button class="TimelineView-module__panelTab__p-sOb TimelineView-module__active__koiun">Clone</button> aka get_by_role("button", name="Clone", exact=True)
+    3) <div class="TimelineView-module__uploadText__5-F3r">Drop audio file to clone</div> aka get_by_role("button", name="📁 Drop audio file to clone")
+ 
+Call log:
+  - Expect "to_be_visible" with timeout 5000ms
+  - waiting for get_by_text("Clone")
+
+✅ PASS 2.1 克隆功能区域正常显示: 
+❌ FAIL 2.2 无效文件上传错误提示正常: Page.wait_for_selector: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("text=不支持的文件格式") to be visible
+
+✅ PASS 3.1 新建项目成功: 
+❌ FAIL 4.1 标签页切换功能正常: Locator.click: Error: strict mode violation: get_by_text("Clone") resolved to 5 elements:
+    1) <span>Voice Clone Studio</span> aka get_by_text("Voice Clone Studio")
+    2) <button class="TimelineView-module__panelTab__p-sOb ">Clone</button> aka get_by_role("button", name="Clone")
+    3) <div class="TimelineView-module__sectionLabel__8wA6d">Your Cloned Voices</div> aka get_by_text("Your Cloned Voices")
+    4) <div class="TimelineView-module__emptyTitle__6ETz9">No cloned voices yet</div> aka get_by_text("No cloned voices yet")
+    5) <div class="TimelineView-module__emptyHint__R1TKj">Clone your first voice from the Collected tab to …</div> aka get_by_text("Clone your first voice from")
+
+Call log:
+  - waiting for get_by_text("Clone")
+

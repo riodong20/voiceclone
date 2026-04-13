@@ -74,7 +74,10 @@ SQLite at `backend/voice_clone.db` with models:
 - `/api/config/*` - TTS model config
 
 ### Testing
-All test must be in tests directory.
+- frondend testing code should follow common standard.
+- backend testing code must be in backen/tests.
+- All test result, scripts for funtion testing and any test related artifacts must be in tests directory.
+
 
 ## gstack
 

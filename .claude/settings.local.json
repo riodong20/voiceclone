@@ -8,7 +8,15 @@
       "Bash(cd:*)",
       "Bash(openspec status:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(uv run:*)",
+      "Bash(/Users/rio/repos/myprjs/voiceclone/.claude/skills/gstack/browse/dist/browse html:*)",
+      "Bash(/Users/rio/repos/myprjs/voiceclone/.claude/skills/gstack/browse/dist/browse js:*)",
+      "Bash(/Users/rio/repos/myprjs/voiceclone/.claude/skills/gstack/browse/dist/browse console:*)",
+      "Bash(/Users/rio/repos/myprjs/voiceclone/.claude/skills/gstack/browse/dist/browse screenshot:*)",
+      "Bash(/Users/rio/repos/myprjs/voiceclone/.claude/skills/gstack/browse/dist/browse refresh:*)",
+      "Bash(/Users/rio/repos/myprjs/voiceclone/.claude/skills/gstack/browse/dist/browse text:*)",
+      "Bash(npm run:*)"
     ]
   },
   "hooks": {
